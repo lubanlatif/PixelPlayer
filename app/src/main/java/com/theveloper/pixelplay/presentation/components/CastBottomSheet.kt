@@ -107,6 +107,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.runtime.derivedStateOf
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -550,96 +551,96 @@ private fun CastSheetContent(
     startWithControls: Boolean = true
 ) {
     val allConnectivityOff = !state.wifiEnabled && !state.isBluetoothEnabled
+    val configuration = LocalConfiguration.current
     val safeInsets = WindowInsets.safeDrawing.asPaddingValues()
-    val statusBarPadding = safeInsets.calculateTopPadding()
-    val navBarPadding = safeInsets.calculateBottomPadding()
+    val maxPagerHeight = (
+        configuration.screenHeightDp.dp -
+            safeInsets.calculateTopPadding() -
+            safeInsets.calculateBottomPadding() -
+            212.dp
+        ).coerceAtLeast(280.dp)
     val pagerState = rememberPagerState(
         initialPage = if (startWithControls) 0 else 1,
         pageCount = { 2 }
     )
     val scope = rememberCoroutineScope()
 
-    Box(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            //.padding(top = statusBarPadding)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .padding(horizontal = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+            Box(
+                modifier = Modifier.background(
+                    color = MaterialTheme.colorScheme.surfaceContainerLow,
+                    shape = CircleShape
+                )
             ) {
-                Box(
-                    modifier = Modifier.background(
-                        color = MaterialTheme.colorScheme.surfaceContainerLow,
-                        shape = CircleShape
-                    )
-                ) {
-                    Text(
-                        modifier = Modifier.padding(start = 6.dp, end = 8.dp),
-                        text = "Connect device",
-                        style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.SemiBold)
-                    )
-                }
-
-                AnimatedVisibility(
-                    visible = state.isScanning,
-                    enter = fadeIn(animationSpec = tween(180)),
-                    exit = fadeOut(animationSpec = tween(160)),
-                    label = "tabScanningIndicator"
-                ) {
-                    BadgeChip(
-                        text = "Scanning nearby",
-                        iconVector = Icons.Filled.Refresh,
-                        contentColor = MaterialTheme.colorScheme.primary
-                    )
-                }
+                Text(
+                    modifier = Modifier.padding(start = 6.dp, end = 8.dp),
+                    text = "Connect device",
+                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.SemiBold)
+                )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .animateContentSize(
-                        animationSpec = tween(durationMillis = 280),
-                        alignment = Alignment.TopCenter
-                    )
+            AnimatedVisibility(
+                visible = state.isScanning,
+                enter = fadeIn(animationSpec = tween(180)),
+                exit = fadeOut(animationSpec = tween(160)),
+                label = "tabScanningIndicator"
             ) {
-                HorizontalPager(
-                    state = pagerState,
-                    modifier = Modifier
-                        .wrapContentHeight()
-                        .fillMaxWidth(),
-                    verticalAlignment = Alignment.Top
-                ) { page ->
-                    when (page) {
-                        0 -> CastControlsTabContent(
-                            state = state,
-                            allConnectivityOff = allConnectivityOff,
-                            onDisconnect = onDisconnect,
-                            onVolumeChange = onVolumeChange,
-                            onTurnOnWifi = onTurnOnWifi,
-                            onOpenBluetoothSettings = onOpenBluetoothSettings,
-                            onRefresh = onRefresh,
-                            navBarPadding = navBarPadding
-                        )
-                        1 -> CastDevicesTabContent(
-                            state = state,
-                            allConnectivityOff = allConnectivityOff,
-                            onSelectDevice = onSelectDevice,
-                            onDisconnect = onDisconnect,
-                            onTurnOnWifi = onTurnOnWifi,
-                            onOpenBluetoothSettings = onOpenBluetoothSettings,
-                            onRefresh = onRefresh,
-                            navBarPadding = navBarPadding
-                        )
-                    }
+                BadgeChip(
+                    text = "Scanning nearby",
+                    iconVector = Icons.Filled.Refresh,
+                    contentColor = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = maxPagerHeight)
+                .animateContentSize(
+                    animationSpec = tween(durationMillis = 280),
+                    alignment = Alignment.TopCenter
+                )
+        ) {
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier
+                    .wrapContentHeight()
+                    .fillMaxWidth(),
+                verticalAlignment = Alignment.Top
+            ) { page ->
+                when (page) {
+                    0 -> CastControlsTabContent(
+                        state = state,
+                        allConnectivityOff = allConnectivityOff,
+                        onDisconnect = onDisconnect,
+                        onVolumeChange = onVolumeChange,
+                        onTurnOnWifi = onTurnOnWifi,
+                        onOpenBluetoothSettings = onOpenBluetoothSettings,
+                        onRefresh = onRefresh,
+                        bottomSpacing = 20.dp,
+                    )
+                    1 -> CastDevicesTabContent(
+                        state = state,
+                        allConnectivityOff = allConnectivityOff,
+                        onSelectDevice = onSelectDevice,
+                        onDisconnect = onDisconnect,
+                        onTurnOnWifi = onTurnOnWifi,
+                        onOpenBluetoothSettings = onOpenBluetoothSettings,
+                        onRefresh = onRefresh,
+                        maxContentHeight = maxPagerHeight,
+                    )
                 }
             }
         }
@@ -647,7 +648,6 @@ private fun CastSheetContent(
         PrimaryTabRow(
             selectedTabIndex = pagerState.currentPage,
             modifier = Modifier
-                .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .navigationBarsPadding()
                 .padding(horizontal = 16.dp, vertical = 8.dp)
@@ -722,79 +722,67 @@ private fun CastControlsTabContent(
     onTurnOnWifi: () -> Unit,
     onOpenBluetoothSettings: () -> Unit,
     onRefresh: () -> Unit,
-    navBarPadding: Dp
+    bottomSpacing: Dp,
 ) {
-    LazyColumn(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
-        contentPadding = PaddingValues(bottom = navBarPadding + 92.dp)
     ) {
-        item(key = "activeDeviceHero") {
-            ActiveDeviceHero(
-                device = state.activeDevice,
-                onDisconnect = onDisconnect,
-                onVolumeChange = onVolumeChange
+        ActiveDeviceHero(
+            device = state.activeDevice,
+            onDisconnect = onDisconnect,
+            onVolumeChange = onVolumeChange
+        )
+
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        text = "Connectivity",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                    )
+                    Text(
+                        text = if (allConnectivityOff) {
+                            "Turn on Wi-Fi or Bluetooth"
+                        } else {
+                            "Manage active radios and rescan"
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                IconButton(onClick = onRefresh) {
+                    Icon(Icons.Filled.Refresh, contentDescription = "Refresh connections")
+                }
+            }
+            QuickSettingsRow(
+                wifiOn = state.wifiRadioOn,
+                wifiConnected = state.wifiEnabled,
+                wifiSsid = state.wifiSsid,
+                onWifiClick = onTurnOnWifi,
+                bluetoothEnabled = state.isBluetoothEnabled,
+                bluetoothName = state.bluetoothName,
+                onBluetoothClick = onOpenBluetoothSettings
             )
         }
 
-        item(key = "connectivityPanel") {
-            Card(
-                shape = RoundedCornerShape(28.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Text(
-                                text = "Connectivity",
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                            )
-                            Text(
-                                text = if (allConnectivityOff) {
-                                    "Turn on Wi-Fi or Bluetooth"
-                                } else {
-                                    "Manage active radios and rescan"
-                                },
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        IconButton(onClick = onRefresh) {
-                            Icon(Icons.Filled.Refresh, contentDescription = "Refresh connections")
-                        }
-                    }
-                    QuickSettingsRow(
-                        wifiOn = state.wifiRadioOn,
-                        wifiConnected = state.wifiEnabled,
-                        wifiSsid = state.wifiSsid,
-                        onWifiClick = onTurnOnWifi,
-                        bluetoothEnabled = state.isBluetoothEnabled,
-                        bluetoothName = state.bluetoothName,
-                        onBluetoothClick = onOpenBluetoothSettings
-                    )
-                }
-            }
+        if (allConnectivityOff) {
+            WifiOffIllustration(
+                onTurnOnWifi = onTurnOnWifi,
+                onOpenBluetoothSettings = onOpenBluetoothSettings
+            )
         }
 
-        if (allConnectivityOff) {
-            item(key = "wifiOff") {
-                WifiOffIllustration(
-                    onTurnOnWifi = onTurnOnWifi,
-                    onOpenBluetoothSettings = onOpenBluetoothSettings
-                )
-            }
-        }
+        Spacer(modifier = Modifier.height(bottomSpacing))
     }
 }
 
@@ -807,16 +795,17 @@ private fun CastDevicesTabContent(
     onTurnOnWifi: () -> Unit,
     onOpenBluetoothSettings: () -> Unit,
     onRefresh: () -> Unit,
-    navBarPadding: Dp
+    maxContentHeight: Dp,
 ) {
     val colors = MaterialTheme.colorScheme
 
     LazyColumn(
         modifier = Modifier
             .fillMaxWidth()
+            .heightIn(max = maxContentHeight)
             .padding(horizontal = 20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
-        contentPadding = PaddingValues(bottom = navBarPadding + 92.dp)
+        contentPadding = PaddingValues(bottom = 20.dp)
     ) {
         item(key = "deviceSectionHeader") {
             DeviceSectionHeader(
