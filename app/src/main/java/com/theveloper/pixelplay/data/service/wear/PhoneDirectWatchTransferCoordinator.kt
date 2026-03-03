@@ -11,8 +11,8 @@ import androidx.core.net.toUri
 import com.google.android.gms.wearable.Wearable
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.preferences.AlbumArtPaletteStyle
+import com.theveloper.pixelplay.data.preferences.ThemePreferencesRepository
 import com.theveloper.pixelplay.data.preferences.ThemePreference
-import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
 import com.theveloper.pixelplay.data.repository.MusicRepository
 import com.theveloper.pixelplay.presentation.viewmodel.ColorSchemeProcessor
 import com.theveloper.pixelplay.shared.WearDataPaths
@@ -41,7 +41,7 @@ import timber.log.Timber
 class PhoneDirectWatchTransferCoordinator @Inject constructor(
     private val application: Application,
     private val musicRepository: MusicRepository,
-    private val userPreferencesRepository: UserPreferencesRepository,
+    private val themePreferencesRepository: ThemePreferencesRepository,
     private val colorSchemeProcessor: ColorSchemeProcessor,
     private val transferStateStore: PhoneWatchTransferStateStore,
     private val transferCancellationStore: PhoneWatchTransferCancellationStore,
@@ -315,14 +315,14 @@ class PhoneDirectWatchTransferCoordinator @Inject constructor(
     }
 
     private suspend fun resolveTransferThemePalette(song: Song): WearThemePalette? {
-        val playerTheme = userPreferencesRepository.playerThemePreferenceFlow.first()
+        val playerTheme = themePreferencesRepository.playerThemePreferenceFlow.first()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && playerTheme == ThemePreference.DYNAMIC) {
             return buildWearThemePalette(dynamicDarkColorScheme(application))
         }
 
         val artUriString = song.albumArtUriString?.takeIf { it.isNotBlank() } ?: return null
         val paletteStyle = AlbumArtPaletteStyle.fromStorageKey(
-            userPreferencesRepository.albumArtPaletteStyleFlow.first().storageKey
+            themePreferencesRepository.albumArtPaletteStyleFlow.first().storageKey
         )
         val schemePair = colorSchemeProcessor.getOrGenerateColorScheme(artUriString, paletteStyle)
             ?: return null
