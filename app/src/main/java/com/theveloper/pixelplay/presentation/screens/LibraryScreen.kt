@@ -240,6 +240,7 @@ import com.theveloper.pixelplay.presentation.components.LibrarySortBottomSheet
 import com.theveloper.pixelplay.presentation.components.subcomps.EnhancedSongListItem
 import com.theveloper.pixelplay.data.service.wear.PhoneWatchTransferState
 import com.theveloper.pixelplay.shared.WearTransferProgress
+import java.io.File
 import kotlin.math.abs
 
 val ListExtraBottomGap = 30.dp
@@ -247,6 +248,9 @@ val PlayerSheetCollapsedCornerRadius = 32.dp
 private const val MAX_ALBUM_MULTI_SELECTION = 6
 private const val ENABLE_FOLDERS_SOURCE_TOGGLE = false
 private const val ENABLE_FOLDERS_STORAGE_FILTER = false
+private const val FOLDER_NAVIGATION_ROOT_KEY = "__folder_root__"
+private const val FOLDER_NAVIGATION_FORWARD = 1
+private const val FOLDER_NAVIGATION_BACKWARD = -1
 
 @Composable
 private fun WatchTransferProgressDialog(
@@ -2443,6 +2447,23 @@ private fun LibraryTabId.displayTitle(): String =
         if (char.isLowerCase()) char.titlecase(Locale.getDefault()) else char.toString()
     }
 
+internal fun resolveFolderNavigationDirection(initialPath: String?, targetPath: String?): Int =
+    when {
+        initialPath == targetPath -> FOLDER_NAVIGATION_FORWARD
+        initialPath == null && targetPath != null -> FOLDER_NAVIGATION_FORWARD
+        initialPath != null && targetPath == null -> FOLDER_NAVIGATION_BACKWARD
+        initialPath != null && targetPath != null && isDescendantFolderPath(initialPath, targetPath) -> FOLDER_NAVIGATION_FORWARD
+        initialPath != null && targetPath != null && isDescendantFolderPath(targetPath, initialPath) -> FOLDER_NAVIGATION_BACKWARD
+        else -> FOLDER_NAVIGATION_FORWARD
+    }
+
+private fun isDescendantFolderPath(ancestorPath: String, candidatePath: String): Boolean {
+    val normalizedAncestor = ancestorPath.trimEnd(File.separatorChar)
+    val normalizedCandidate = candidatePath.trimEnd(File.separatorChar)
+    if (normalizedAncestor == normalizedCandidate) return false
+    return normalizedCandidate.startsWith("$normalizedAncestor${File.separatorChar}")
+}
+
 @OptIn(ExperimentalAnimationApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun LibraryFoldersTab(
@@ -2472,12 +2493,22 @@ fun LibraryFoldersTab(
 
 
     AnimatedContent(
-        targetState = Pair(isPlaylistView, currentFolder?.path ?: "root"),
+        targetState = Pair(isPlaylistView, currentFolder?.path ?: FOLDER_NAVIGATION_ROOT_KEY),
         label = "FolderNavigation",
         modifier = Modifier.fillMaxSize(),
         transitionSpec = {
-            (slideInHorizontally { width -> width } + fadeIn())
-                .togetherWith(slideOutHorizontally { width -> -width } + fadeOut())
+            val direction = resolveFolderNavigationDirection(
+                initialPath = initialState.second.takeUnless { it == FOLDER_NAVIGATION_ROOT_KEY },
+                targetPath = targetState.second.takeUnless { it == FOLDER_NAVIGATION_ROOT_KEY }
+            )
+            val slideIn = slideInHorizontally { width ->
+                if (direction == FOLDER_NAVIGATION_FORWARD) width else -width
+            } + fadeIn()
+            val slideOut = slideOutHorizontally { width ->
+                if (direction == FOLDER_NAVIGATION_FORWARD) -width else width
+            } + fadeOut()
+
+            slideIn.togetherWith(slideOut)
         }
     ) { (playlistMode, targetPath) ->
         // Each navigation destination gets its own independant ListState
@@ -2490,7 +2521,7 @@ fun LibraryFoldersTab(
             sortMusicFoldersByOption(flattenFolders(folders), currentSortOption)
         }
 
-        val isRoot = targetPath == "root"
+        val isRoot = targetPath == FOLDER_NAVIGATION_ROOT_KEY
         val activeFolder = if (isRoot) null else currentFolder
         val showPlaylistCards = playlistMode && activeFolder == null
         val itemsToShow = remember(activeFolder, folders, flattenedFolders, currentSortOption) {
