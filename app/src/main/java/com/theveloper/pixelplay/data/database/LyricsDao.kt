@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 
 @Dao
 interface LyricsDao {
@@ -27,4 +28,10 @@ interface LyricsDao {
 
     @Query("SELECT songId FROM lyrics WHERE songId IN (:songIds) AND content != ''")
     suspend fun getSongIdsWithLyrics(songIds: List<Long>): List<Long>
+
+    @Transaction
+    suspend fun replaceAll(lyrics: List<LyricsEntity>) {
+        deleteAll()
+        if (lyrics.isNotEmpty()) insertAll(lyrics)
+    }
 }
