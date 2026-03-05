@@ -1,5 +1,7 @@
 package com.theveloper.pixelplay.data.backup.module
 
+import android.content.Context
+import android.util.Base64
 import android.util.Log
 import com.google.gson.Gson
 import com.google.gson.JsonParser
@@ -13,14 +15,17 @@ import com.theveloper.pixelplay.data.preferences.PlaylistPreferencesRepository
 import com.theveloper.pixelplay.data.preferences.PreferenceBackupEntry
 import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
 import com.theveloper.pixelplay.di.BackupGson
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
+import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class PlaylistsModuleHandler @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val playlistPreferencesRepository: PlaylistPreferencesRepository,
     private val userPreferencesRepository: UserPreferencesRepository,
     private val musicDao: MusicDao,
@@ -63,11 +68,19 @@ class PlaylistsModuleHandler @Inject constructor(
             playlist.copy(songIds = localSongIds)
         }
 
+        // Encode cover images as Base64
+        val coverImages = mutableMapOf<String, String>()
+        filteredPlaylists.forEach { playlist ->
+            val uri = playlist.coverImageUri ?: return@forEach
+            readFileAsBase64(uri)?.let { coverImages[playlist.id] = it }
+        }
+
         val payload = PlaylistsBackupPayload(
             playlists = filteredPlaylists,
             playlistSongOrderModes = playlistPreferencesRepository.playlistSongOrderModesFlow.first(),
             playlistsSortOption = playlistPreferencesRepository.playlistsSortOptionFlow.first(),
-            songMetadata = songMetadata.ifEmpty { null }
+            songMetadata = songMetadata.ifEmpty { null },
+            coverImages = coverImages.ifEmpty { null }
         )
         gson.toJson(payload)
     }
@@ -103,6 +116,7 @@ class PlaylistsModuleHandler @Inject constructor(
 
         val backupPlaylists = parsed.playlists.orEmpty()
         val songMetadata = parsed.songMetadata
+        val coverImages = parsed.coverImages
 
         // Resolve song IDs against the current device library
         val resolvedPlaylists = if (songMetadata != null && songMetadata.isNotEmpty()) {
@@ -112,7 +126,14 @@ class PlaylistsModuleHandler @Inject constructor(
             backupPlaylists
         }
 
-        playlistPreferencesRepository.replaceAllPlaylists(resolvedPlaylists)
+        // Restore cover images and update playlist URIs
+        val finalPlaylists = if (coverImages != null && coverImages.isNotEmpty()) {
+            restoreCoverImages(resolvedPlaylists, coverImages)
+        } else {
+            resolvedPlaylists
+        }
+
+        playlistPreferencesRepository.replaceAllPlaylists(finalPlaylists)
         playlistPreferencesRepository.setPlaylistSongOrderModes(parsed.playlistSongOrderModes.orEmpty())
         playlistPreferencesRepository.setPlaylistsSortOption(
             parsed.playlistsSortOption ?: SortOption.PlaylistNameAZ.storageKey
@@ -121,6 +142,41 @@ class PlaylistsModuleHandler @Inject constructor(
     }
 
     override suspend fun rollback(snapshot: String) = restore(snapshot)
+
+    // ---- Cover image helpers ----
+
+    private fun readFileAsBase64(path: String): String? {
+        return try {
+            val file = File(path)
+            if (!file.exists() || file.length() == 0L) return null
+            val bytes = file.readBytes()
+            Base64.encodeToString(bytes, Base64.NO_WRAP)
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to read cover image: $path", e)
+            null
+        }
+    }
+
+    private fun restoreCoverImages(
+        playlists: List<Playlist>,
+        coverImages: Map<String, String>
+    ): List<Playlist> {
+        return playlists.map { playlist ->
+            val base64 = coverImages[playlist.id] ?: return@map playlist
+            try {
+                val bytes = Base64.decode(base64, Base64.NO_WRAP)
+                val fileName = "playlist_cover_${playlist.id}.jpg"
+                val file = File(context.filesDir, fileName)
+                file.writeBytes(bytes)
+                playlist.copy(coverImageUri = file.absolutePath)
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to restore cover image for playlist ${playlist.id}", e)
+                playlist.copy(coverImageUri = null)
+            }
+        }
+    }
+
+    // ---- Song matching ----
 
     /**
      * Resolves backup song IDs to current device song IDs using metadata matching.
@@ -253,6 +309,8 @@ class PlaylistsModuleHandler @Inject constructor(
         return cloudIds
     }
 
+    // ---- Legacy format ----
+
     private suspend fun restoreLegacyPreferenceEntries(payload: String) {
         val type = TypeToken.getParameterized(List::class.java, PreferenceBackupEntry::class.java).type
         val entries: List<PreferenceBackupEntry> = gson.fromJson(payload, type)
@@ -291,6 +349,8 @@ class PlaylistsModuleHandler @Inject constructor(
         userPreferencesRepository.clearLegacyUserPlaylists()
     }
 
+    // ---- Data classes ----
+
     /** Song metadata stored alongside playlists for cross-device matching. */
     data class SongMetadataEntry(
         val title: String,
@@ -304,7 +364,9 @@ class PlaylistsModuleHandler @Inject constructor(
         val playlistSongOrderModes: Map<String, String>? = null,
         val playlistsSortOption: String? = null,
         /** Song metadata for cross-device matching. Key = songId from backup. Null in legacy/snapshot payloads. */
-        val songMetadata: Map<String, SongMetadataEntry>? = null
+        val songMetadata: Map<String, SongMetadataEntry>? = null,
+        /** Base64-encoded cover images. Key = playlist ID. Null if no custom covers. */
+        val coverImages: Map<String, String>? = null
     )
 
     companion object {
