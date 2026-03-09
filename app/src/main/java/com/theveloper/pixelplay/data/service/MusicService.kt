@@ -366,6 +366,10 @@ class MusicService : MediaLibraryService() {
                 val sessionCommandsBuilder = SessionCommands.Builder()
                     .addSessionCommands(defaultResult.availableSessionCommands.commands)
                 customCommands.forEach { sessionCommandsBuilder.add(it) }
+                grantArtworkUriPermissions(
+                    controller.packageName,
+                    listOfNotNull(session.player.currentMediaItem)
+                )
 
                 return MediaSession.ConnectionResult.accept(
                     sessionCommandsBuilder.build(),
@@ -501,6 +505,7 @@ class MusicService : MediaLibraryService() {
                     try {
                         rememberLastBrowsedParent(browser, parentId)
                         val children = autoMediaBrowseTree.getChildren(parentId, page, pageSize)
+                        grantArtworkUriPermissions(browser.packageName, children)
                         LibraryResult.ofItemList(children, params)
                     } catch (e: Exception) {
                         Timber.tag(TAG).e(e, "onGetChildren failed for parentId=$parentId")
@@ -518,6 +523,7 @@ class MusicService : MediaLibraryService() {
                     try {
                         val item = autoMediaBrowseTree.getItem(mediaId)
                         if (item != null) {
+                            grantArtworkUriPermissions(browser.packageName, listOf(item))
                             LibraryResult.ofItem(item, null)
                         } else {
                             LibraryResult.ofError(SessionError.ERROR_BAD_VALUE)
@@ -559,6 +565,7 @@ class MusicService : MediaLibraryService() {
                             .drop(offset)
                             .take(effectivePageSize)
 
+                        grantArtworkUriPermissions(browser.packageName, pagedResults)
                         LibraryResult.ofItemList(pagedResults, params)
                     } catch (e: Exception) {
                         Timber.tag(TAG).e(e, "onGetSearchResult failed for query=$query")
@@ -575,10 +582,13 @@ class MusicService : MediaLibraryService() {
                 return serviceScope.future {
                     if (mediaItems.size == 1) {
                         resolveContextQueueForRequestedItem(mediaItems.first(), controller)?.let { queue ->
+                            grantArtworkUriPermissions(controller.packageName, queue.mediaItems)
                             return@future queue.mediaItems
                         }
                     }
-                    resolveMediaItemsByIds(mediaItems)
+                    resolveMediaItemsByIds(mediaItems).also { resolvedItems ->
+                        grantArtworkUriPermissions(controller.packageName, resolvedItems)
+                    }
                 }
             }
 
@@ -597,6 +607,7 @@ class MusicService : MediaLibraryService() {
                         resolveContextQueueForRequestedItem(it, controller)
                     }
                     if (contextQueue != null) {
+                        grantArtworkUriPermissions(controller.packageName, contextQueue.mediaItems)
                         return@future MediaSession.MediaItemsWithStartPosition(
                             contextQueue.mediaItems,
                             contextQueue.startIndex,
@@ -605,6 +616,7 @@ class MusicService : MediaLibraryService() {
                     }
 
                     val resolvedItems = resolveMediaItemsByIds(mediaItems)
+                    grantArtworkUriPermissions(controller.packageName, resolvedItems)
                     val safeStartIndex = requestedIndex.coerceIn(
                         0,
                         (resolvedItems.size - 1).coerceAtLeast(0)
@@ -1439,7 +1451,8 @@ class MusicService : MediaLibraryService() {
         snapshotItem.title?.takeIf { it.isNotBlank() }?.let { metadataBuilder.setTitle(it) }
         snapshotItem.artist?.takeIf { it.isNotBlank() }?.let { metadataBuilder.setArtist(it) }
         snapshotItem.albumTitle?.takeIf { it.isNotBlank() }?.let { metadataBuilder.setAlbumTitle(it) }
-        MediaItemBuilder.artworkUri(snapshotItem.artworkUri)?.let { metadataBuilder.setArtworkUri(it) }
+        MediaItemBuilder.externalControllerArtworkUri(this, snapshotItem.artworkUri)
+            ?.let { metadataBuilder.setArtworkUri(it) }
 
         val extras = Bundle().apply {
             putBoolean(
@@ -2111,7 +2124,7 @@ class MusicService : MediaLibraryService() {
         }
 
         val queueMediaItems = queueSongs.map { song ->
-            MediaItemBuilder.build(song)
+            MediaItemBuilder.buildForExternalController(this, song)
         }.toMutableList()
 
         return ContextQueueResolution(
@@ -2127,9 +2140,35 @@ class MusicService : MediaLibraryService() {
 
         return requestedItems.map { requestedItem ->
             songMap[requestedItem.mediaId]?.let { song ->
-                MediaItemBuilder.build(song)
+                MediaItemBuilder.buildForExternalController(this, song)
             } ?: requestedItem
         }.toMutableList()
+    }
+
+    private fun grantArtworkUriPermissions(
+        targetPackage: String,
+        mediaItems: List<MediaItem>
+    ) {
+        if (targetPackage.isBlank()) return
+
+        val providerAuthority = "$packageName.provider"
+        mediaItems.forEach { mediaItem ->
+            val artworkUri = resolveArtworkUri(mediaItem.mediaMetadata) ?: return@forEach
+            if (artworkUri.scheme?.lowercase() != "content" || artworkUri.authority != providerAuthority) {
+                return@forEach
+            }
+
+            runCatching {
+                grantUriPermission(targetPackage, artworkUri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }.onFailure { error ->
+                Timber.tag(TAG).w(
+                    error,
+                    "Failed to grant artwork URI permission to package=%s uri=%s",
+                    targetPackage,
+                    artworkUri
+                )
+            }
+        }
     }
 
     private fun resolveAutoContextFromParentId(parentId: String): Pair<String, String?>? {
