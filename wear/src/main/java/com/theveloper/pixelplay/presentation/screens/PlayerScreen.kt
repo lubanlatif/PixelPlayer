@@ -3,7 +3,10 @@ package com.theveloper.pixelplay.presentation.screens
 import android.graphics.Bitmap
 import android.os.SystemClock
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
@@ -189,8 +192,11 @@ private fun PlayerContent(
     val pagerState = rememberPagerState(initialPage = 0, pageCount = { 2 })
     var mainPageQueueReveal by remember { mutableFloatStateOf(0f) }
     var albumRevealProgress by remember { mutableFloatStateOf(0f) }
-    val hidePageIndicator = pagerState.currentPage == 0 &&
-        (mainPageQueueReveal > 0.05f || albumRevealProgress > 0.05f)
+    val isMainPlayerPage = pagerState.currentPage == 0
+    val isMainPlayerOverlayVisible =
+        mainPageQueueReveal > 0.05f || albumRevealProgress > 0.05f
+    val showPageIndicator =
+        !isMainPlayerPage || (pagerState.isScrollInProgress && !isMainPlayerOverlayVisible)
 
     Box(
         modifier = Modifier
@@ -233,13 +239,18 @@ private fun PlayerContent(
             }
         }
 
-        if (!hidePageIndicator) {
+        AnimatedVisibility(
+            visible = showPageIndicator,
+            enter = fadeIn(animationSpec = tween(durationMillis = 180)),
+            exit = fadeOut(animationSpec = tween(durationMillis = 240)),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .zIndex(6f),
+        ) {
             M3HorizontalPageIndicator(
                 pagerState = pagerState,
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 10.dp)
-                    .zIndex(6f),
+                    .padding(bottom = 10.dp),
                 selectedColor = palette.textPrimary,
                 unselectedColor = palette.textPrimary.copy(alpha = 0.52f),
                 backgroundColor = Color.Transparent,
