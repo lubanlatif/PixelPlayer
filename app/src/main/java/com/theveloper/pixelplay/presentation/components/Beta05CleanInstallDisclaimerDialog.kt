@@ -67,40 +67,48 @@ fun Beta05CleanInstallDisclaimerDialog(
                     .padding(horizontal = 18.dp, vertical = 18.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                Row(
+                Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.Top,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    shape = blockShape,
+                    color = MaterialTheme.colorScheme.surfaceContainer,
                 ) {
-                    Surface(
-                        shape = AbsoluteSmoothCornerShape(18.dp, 60),
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.rounded_dataset_24),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier
-                                .padding(11.dp)
-                                .size(22.dp),
-                        )
-                    }
-
                     Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 14.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
-                        Surface(
-                            shape = AbsoluteSmoothCornerShape(12.dp, 60),
-                            color = MaterialTheme.colorScheme.secondaryContainer,
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
-                            Text(
-                                text = "From beta 0.5?",
-                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer,
-                            )
+                            Surface(
+                                shape = AbsoluteSmoothCornerShape(12.dp, 60),
+                                color = MaterialTheme.colorScheme.secondaryContainer,
+                            ) {
+                                Text(
+                                    text = "Beta 0.5 upgrade",
+                                    modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                )
+                            }
+
+                            Surface(
+                                shape = AbsoluteSmoothCornerShape(16.dp, 60),
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.rounded_dataset_24),
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    modifier = Modifier
+                                        .padding(10.dp)
+                                        .size(18.dp),
+                                )
+                            }
                         }
 
                         Text(
@@ -110,7 +118,7 @@ fun Beta05CleanInstallDisclaimerDialog(
                             fontWeight = FontWeight.Bold,
                         )
                         Text(
-                            text = "This update changed a lot under the hood and may need fresh library data instead of older cached state.",
+                            text = "If you're coming from beta 0.5.0, this update may need fresh library data instead of older cached state.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
