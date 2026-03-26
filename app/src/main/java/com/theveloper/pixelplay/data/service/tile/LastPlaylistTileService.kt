@@ -1,12 +1,12 @@
 package com.theveloper.pixelplay.data.service.tile
 
-import android.app.PendingIntent
 import android.content.Intent
 import android.os.Build
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 import androidx.annotation.RequiresApi
 import com.theveloper.pixelplay.MainActivity
+import com.theveloper.pixelplay.MainActivityIntentContract
 import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
@@ -29,6 +29,10 @@ import kotlinx.coroutines.withContext
  */
 @RequiresApi(Build.VERSION_CODES.N)
 class LastPlaylistTileService : TileService() {
+
+    companion object {
+        private const val REQUEST_CODE_LAST_PLAYLIST = 1002
+    }
 
     @EntryPoint
     @InstallIn(SingletonComponent::class)
@@ -65,15 +69,14 @@ class LastPlaylistTileService : TileService() {
             val playlistId = prefsRepo.lastPlaylistIdFlow.first() ?: return@launch
             withContext(Dispatchers.Main) {
                 val intent = Intent(this@LastPlaylistTileService, MainActivity::class.java).apply {
-                    action = MainActivity.ACTION_OPEN_PLAYLIST
-                    putExtra(MainActivity.EXTRA_PLAYLIST_ID, playlistId)
+                    action = MainActivityIntentContract.ACTION_OPEN_PLAYLIST
+                    putExtra(MainActivityIntentContract.EXTRA_PLAYLIST_ID, playlistId)
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
                 }
-                val pendingIntent = PendingIntent.getActivity(
-                    this@LastPlaylistTileService, 0, intent,
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                startActivityAndCollapseCompat(
+                    intent = intent,
+                    requestCode = REQUEST_CODE_LAST_PLAYLIST
                 )
-                startActivityAndCollapse(pendingIntent)
             }
         }
     }

@@ -323,15 +323,15 @@ class MainActivity : ComponentActivity() {
 
         when {
             // Handle shuffle all shortcut / tile
-            intent.action == ACTION_SHUFFLE_ALL -> {
+            intent.action == MainActivityIntentContract.ACTION_SHUFFLE_ALL -> {
                 android.util.Log.d("TileDebug", "handleIntent: ACTION_SHUFFLE_ALL received")
                 playerViewModel.triggerShuffleAllFromTile()
                 intent.action = null // Clear action to prevent re-triggering
             }
             
             // Handle playlist shortcut
-            intent.action == ACTION_OPEN_PLAYLIST -> {
-                intent.getStringExtra(EXTRA_PLAYLIST_ID)?.let { playlistId ->
+            intent.action == MainActivityIntentContract.ACTION_OPEN_PLAYLIST -> {
+                intent.getStringExtra(MainActivityIntentContract.EXTRA_PLAYLIST_ID)?.let { playlistId ->
                     _pendingPlaylistNavigation.value = playlistId
                 }
                 intent.action = null
@@ -373,12 +373,6 @@ class MainActivity : ComponentActivity() {
         }
     }
     
-    companion object {
-        const val ACTION_SHUFFLE_ALL = "com.theveloper.pixelplay.ACTION_SHUFFLE_ALL"
-        const val ACTION_OPEN_PLAYLIST = "com.theveloper.pixelplay.ACTION_OPEN_PLAYLIST"
-        const val EXTRA_PLAYLIST_ID = "playlist_id"
-    }
-
     private fun resolveStreamUri(intent: Intent): android.net.Uri? {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             intent.getParcelableExtra(android.content.Intent.EXTRA_STREAM, android.net.Uri::class.java)?.let { return it }
