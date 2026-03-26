@@ -275,6 +275,14 @@ object AlbumArtUtils {
         return shareableCacheUri(appContext, file)
     }
 
+    /**
+     * Delete both the cached artwork and the "no art" marker for a specific song.
+     */
+    fun clearCacheForSong(appContext: Context, songId: Long) {
+        getCachedAlbumArtFile(appContext, songId).delete()
+        noArtMarkerFile(appContext, songId).delete()
+    }
+
     fun getCachedAlbumArtFile(appContext: Context, songId: Long): File {
         return File(appContext.cacheDir, "song_art_${songId}.jpg")
     }

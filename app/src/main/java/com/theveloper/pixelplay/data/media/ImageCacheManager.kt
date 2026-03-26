@@ -24,6 +24,12 @@ class ImageCacheManager @Inject constructor(
         val knownSizeSuffixes = listOf(null, "128x128", "150x150", "168x168", "256x256", "300x300", "512x512", "600x600")
 
         uriStrings.mapNotNull { it?.takeIf(String::isNotBlank) }.forEach { baseUri ->
+            if (com.theveloper.pixelplay.utils.LocalArtworkUri.isLocalArtworkUri(baseUri)) {
+                com.theveloper.pixelplay.utils.LocalArtworkUri.parseSongId(baseUri)?.let { songId ->
+                    com.theveloper.pixelplay.utils.AlbumArtUtils.clearCacheForSong(context, songId)
+                }
+            }
+
             knownSizeSuffixes.forEach { suffix ->
                 val cacheKey = suffix?.let { "${baseUri}_${it}" } ?: baseUri
                 memoryCache?.remove(MemoryCache.Key(cacheKey))
