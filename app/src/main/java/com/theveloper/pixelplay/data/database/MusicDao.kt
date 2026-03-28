@@ -695,6 +695,7 @@ interface MusicDao {
             albums.artist_id AS artist_id,
             albums.album_art_uri_string AS album_art_uri_string,
             COUNT(songs.id) AS song_count,
+            albums.date_added AS date_added,
             albums.year AS year
         FROM albums
         INNER JOIN songs ON albums.id = songs.album_id
@@ -726,6 +727,7 @@ interface MusicDao {
             albums.artist_name,
             albums.artist_id,
             albums.album_art_uri_string,
+            albums.date_added,
             albums.year
         ORDER BY albums.title ASC
     """)
@@ -747,6 +749,7 @@ interface MusicDao {
                 FROM songs
                 WHERE songs.album_id = albums.id
             ) AS song_count,
+            albums.date_added AS date_added,
             albums.year AS year
         FROM albums
         WHERE albums.id = :albumId
@@ -766,6 +769,7 @@ interface MusicDao {
                 FROM songs
                 WHERE songs.album_id = albums.id
             ) AS song_count,
+            albums.date_added AS date_added,
             albums.year AS year
         FROM albums
         WHERE albums.title LIKE '%' || :query || '%'
@@ -785,6 +789,7 @@ interface MusicDao {
             albums.artist_id AS artist_id,
             albums.album_art_uri_string AS album_art_uri_string,
             COUNT(songs.id) AS song_count,
+            albums.date_added AS date_added,
             albums.year AS year
         FROM albums
         INNER JOIN songs ON albums.id = songs.album_id
@@ -795,6 +800,7 @@ interface MusicDao {
             albums.artist_name,
             albums.artist_id,
             albums.album_art_uri_string,
+            albums.date_added,
             albums.year
         ORDER BY albums.title ASC
     """)
@@ -811,6 +817,7 @@ interface MusicDao {
             albums.artist_id AS artist_id,
             albums.album_art_uri_string AS album_art_uri_string,
             COUNT(songs.id) AS song_count,
+            albums.date_added AS date_added,
             albums.year AS year
         FROM albums
         LEFT JOIN songs ON albums.id = songs.album_id
@@ -821,6 +828,7 @@ interface MusicDao {
             albums.artist_name,
             albums.artist_id,
             albums.album_art_uri_string,
+            albums.date_added,
             albums.year
         ORDER BY albums.title ASC
     """)
@@ -834,6 +842,7 @@ interface MusicDao {
             albums.artist_id AS artist_id,
             albums.album_art_uri_string AS album_art_uri_string,
             COUNT(songs.id) AS song_count,
+            albums.date_added AS date_added,
             albums.year AS year
         FROM albums
         INNER JOIN songs ON albums.id = songs.album_id
@@ -845,6 +854,7 @@ interface MusicDao {
             albums.artist_name,
             albums.artist_id,
             albums.album_art_uri_string,
+            albums.date_added,
             albums.year
         ORDER BY albums.title ASC
     """)

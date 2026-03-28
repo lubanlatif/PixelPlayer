@@ -19,13 +19,14 @@ sealed class SortOption(val storageKey: String, val displayName: String) {
     object AlbumTitleZA : SortOption("album_title_za", "Title (Z-A)")
     object AlbumArtist : SortOption("album_artist", "Artist")
     object AlbumReleaseYear : SortOption("album_release_year", "Release Year")
+    object AlbumDateAdded : SortOption("album_date_added", "Date Added")
     object AlbumSizeAsc : SortOption("album_size_asc", "Fewest Songs")
     object AlbumSizeDesc : SortOption("album_size_desc", "Most Songs")
 
     // Artist Sort Options
     object ArtistNameAZ : SortOption("artist_name_az", "Name (A-Z)")
     object ArtistNameZA : SortOption("artist_name_za", "Name (Z-A)")
-    // object ArtistNumSongs : SortOption("artist_num_songs", "Number of Songs") // Requires ViewModel change & data
+    object ArtistNumSongs : SortOption("artist_num_songs", "Number of Songs")
 
     // Playlist Sort Options
     object PlaylistNameAZ : SortOption("playlist_name_az", "Name (A-Z)")
@@ -67,6 +68,7 @@ sealed class SortOption(val storageKey: String, val displayName: String) {
                 AlbumTitleZA,
                 AlbumArtist,
                 AlbumReleaseYear,
+                AlbumDateAdded,
                 AlbumSizeAsc,
                 AlbumSizeDesc
             )
@@ -74,7 +76,8 @@ sealed class SortOption(val storageKey: String, val displayName: String) {
         val ARTISTS: List<SortOption> by lazy {
             listOf(
                 ArtistNameAZ,
-                ArtistNameZA
+                ArtistNameZA,
+                ArtistNumSongs
             )
         }
         val PLAYLISTS: List<SortOption> by lazy {

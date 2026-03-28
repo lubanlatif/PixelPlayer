@@ -324,6 +324,7 @@ class LibraryStateHolder @Inject constructor(
                 SortOption.AlbumTitleZA -> _albums.value.sortedByDescending { it.title.lowercase() }
                 SortOption.AlbumArtist -> _albums.value.sortedBy { it.artist.lowercase() }
                 SortOption.AlbumReleaseYear -> _albums.value.sortedByDescending { it.year }
+                SortOption.AlbumDateAdded -> _albums.value.sortedByDescending { it.dateAdded }
                 SortOption.AlbumSizeAsc -> _albums.value.sortedWith(compareBy<Album> { it.songCount }.thenBy { it.title.lowercase() })
                 SortOption.AlbumSizeDesc -> _albums.value.sortedWith(compareByDescending<Album> { it.songCount }.thenBy { it.title.lowercase() })
                 else -> _albums.value
@@ -342,6 +343,7 @@ class LibraryStateHolder @Inject constructor(
             val sorted = when (sortOption) {
                 SortOption.ArtistNameAZ -> _artists.value.sortedBy { it.name.lowercase() }
                 SortOption.ArtistNameZA -> _artists.value.sortedByDescending { it.name.lowercase() }
+                SortOption.ArtistNumSongs -> _artists.value.sortedByDescending { it.songCount }
                 else -> _artists.value
             }
             _artists.value = sorted.toImmutableList()

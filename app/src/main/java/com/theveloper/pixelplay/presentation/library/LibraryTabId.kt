@@ -32,7 +32,8 @@ enum class LibraryTabId(
             SortOption.AlbumTitleAZ,
             SortOption.AlbumTitleZA,
             SortOption.AlbumArtist,
-            SortOption.AlbumReleaseYear
+            SortOption.AlbumReleaseYear,
+            SortOption.AlbumDateAdded
         )
     ),
     Artists(
@@ -40,7 +41,8 @@ enum class LibraryTabId(
         label = "ARTIST",
         sortOptions = listOf(
             SortOption.ArtistNameAZ,
-            SortOption.ArtistNameZA
+            SortOption.ArtistNameZA,
+            SortOption.ArtistNumSongs
         )
     ),
     Playlists(
