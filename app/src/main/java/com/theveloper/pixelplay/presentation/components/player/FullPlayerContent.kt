@@ -154,6 +154,7 @@ fun FullPlayerContent(
     currentPlaybackQueue: ImmutableList<Song>,
     currentQueueSourceName: String,
     isShuffleEnabled: Boolean,
+    shuffleTransitionInProgress: Boolean,
     repeatMode: Int,
     allowRealtimeUpdates: Boolean = true,
     expansionFractionProvider: () -> Float,
@@ -533,6 +534,7 @@ fun FullPlayerContent(
             playerOnAccentColor = playerOnAccentColor,
             controlTintOtherIcons = controlTintOtherIcons,
             isShuffleEnabledProvider = isShuffleEnabledProvider,
+            shuffleTransitionInProgress = shuffleTransitionInProgress,
             repeatModeProvider = repeatModeProvider,
             isFavoriteProvider = isFavoriteProvider,
             onShuffleToggle = onShuffleToggle,
@@ -1110,6 +1112,7 @@ private fun FullPlayerControlsSection(
     playerOnAccentColor: Color,
     controlTintOtherIcons: Color,
     isShuffleEnabledProvider: () -> Boolean,
+    shuffleTransitionInProgress: Boolean,
     repeatModeProvider: () -> Int,
     isFavoriteProvider: () -> Boolean,
     onShuffleToggle: () -> Unit,
@@ -1173,6 +1176,7 @@ private fun FullPlayerControlsSection(
                     .padding(horizontal = 26.dp, vertical = 0.dp)
                     .padding(bottom = 6.dp),
                 isShuffleEnabled = isShuffleEnabledProvider(),
+                isShuffleTransitionInProgress = shuffleTransitionInProgress,
                 repeatMode = repeatModeProvider(),
                 isFavoriteProvider = isFavoriteProvider,
                 onShuffleToggle = onShuffleToggle,
@@ -2450,6 +2454,7 @@ private fun ControlsPlaceholder(color: Color, onColor: Color) {
 private fun BottomToggleRow(
     modifier: Modifier,
     isShuffleEnabled: Boolean,
+    isShuffleTransitionInProgress: Boolean,
     repeatMode: Int,
     isFavoriteProvider: () -> Boolean,
     onShuffleToggle: () -> Unit,
@@ -2502,6 +2507,7 @@ private fun BottomToggleRow(
             ToggleSegmentButton(
                 modifier = commonModifier,
                 active = isShuffleEnabled,
+                enabled = !isShuffleTransitionInProgress,
                 activeColor = LocalMaterialTheme.current.primary,
                 activeCornerRadius = rowCorners,
                 activeContentColor = LocalMaterialTheme.current.onPrimary,

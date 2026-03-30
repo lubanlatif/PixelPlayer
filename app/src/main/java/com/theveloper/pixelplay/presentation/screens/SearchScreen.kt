@@ -112,7 +112,6 @@ import com.theveloper.pixelplay.presentation.screens.search.components.GenreCate
 import com.theveloper.pixelplay.presentation.viewmodel.PlaylistViewModel
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape

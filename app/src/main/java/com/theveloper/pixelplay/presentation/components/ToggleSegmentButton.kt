@@ -35,6 +35,7 @@ import com.theveloper.pixelplay.presentation.components.LocalMaterialTheme
 fun ToggleSegmentButton(
     modifier: Modifier,
     active: Boolean,
+    enabled: Boolean = true,
     activeColor: Color,
     inactiveColor: Color = Color.Gray,
     activeContentColor: Color = LocalMaterialTheme.current.onPrimary,
@@ -47,6 +48,7 @@ fun ToggleSegmentButton(
     ToggleSegmentButtonContainer(
         modifier = modifier,
         active = active,
+        enabled = enabled,
         activeColor = activeColor,
         inactiveColor = inactiveColor,
         activeCornerRadius = activeCornerRadius,
@@ -65,6 +67,7 @@ fun ToggleSegmentButton(
 fun ToggleSegmentButton(
     modifier: Modifier,
     active: Boolean,
+    enabled: Boolean = true,
     activeColor: Color,
     inactiveColor: Color = Color.Gray,
     activeContentColor: Color = LocalMaterialTheme.current.onPrimary,
@@ -77,6 +80,7 @@ fun ToggleSegmentButton(
     ToggleSegmentButtonContainer(
         modifier = modifier,
         active = active,
+        enabled = enabled,
         activeColor = activeColor,
         inactiveColor = inactiveColor,
         activeCornerRadius = activeCornerRadius,
@@ -95,6 +99,7 @@ fun ToggleSegmentButton(
 fun ToggleSegmentButton(
     modifier: Modifier,
     active: Boolean,
+    enabled: Boolean = true,
     activeColor: Color,
     inactiveColor: Color = Color.Gray,
     activeContentColor: Color = LocalMaterialTheme.current.onPrimary,
@@ -106,6 +111,7 @@ fun ToggleSegmentButton(
     ToggleSegmentButtonContainer(
         modifier = modifier,
         active = active,
+        enabled = enabled,
         activeColor = activeColor,
         inactiveColor = inactiveColor,
         activeCornerRadius = activeCornerRadius,
@@ -124,6 +130,7 @@ fun ToggleSegmentButton(
 fun ToggleSegmentButton(
     modifier: Modifier,
     active: Boolean,
+    enabled: Boolean = true,
     activeColor: Color,
     inactiveColor: Color = Color.Gray,
     activeContentColor: Color = LocalMaterialTheme.current.onPrimary,
@@ -136,6 +143,7 @@ fun ToggleSegmentButton(
     ToggleSegmentButtonContainer(
         modifier = modifier,
         active = active,
+        enabled = enabled,
         activeColor = activeColor,
         inactiveColor = inactiveColor,
         activeCornerRadius = activeCornerRadius,
@@ -168,6 +176,7 @@ fun ToggleSegmentButton(
 private fun ToggleSegmentButtonContainer(
     modifier: Modifier,
     active: Boolean,
+    enabled: Boolean,
     activeColor: Color,
     inactiveColor: Color,
     activeCornerRadius: Dp,
@@ -190,7 +199,7 @@ private fun ToggleSegmentButtonContainer(
             .fillMaxSize()
             .clip(RoundedCornerShape(cornerRadius))
             .background(bgColor)
-            .clickable(onClick = onClick),
+            .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         content()
