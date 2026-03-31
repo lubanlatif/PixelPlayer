@@ -45,6 +45,7 @@ import com.theveloper.pixelplay.data.repository.TransitionRepositoryImpl
 import com.theveloper.pixelplay.data.repository.FolderTreeBuilder
 import dagger.Module
 import dagger.Provides
+import dagger.Lazy
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
@@ -329,8 +330,8 @@ object AppModule {
         musicDao: MusicDao,
         lyricsRepository: LyricsRepository,
         telegramDao: com.theveloper.pixelplay.data.database.TelegramDao,
-        telegramCacheManager: com.theveloper.pixelplay.data.telegram.TelegramCacheManager,
-        telegramRepository: com.theveloper.pixelplay.data.telegram.TelegramRepository,
+        telegramCacheManager: Lazy<com.theveloper.pixelplay.data.telegram.TelegramCacheManager>,
+        telegramRepository: Lazy<com.theveloper.pixelplay.data.telegram.TelegramRepository>,
         songRepository: SongRepository,
         favoritesDao: FavoritesDao,
         artistImageRepository: ArtistImageRepository,
@@ -344,8 +345,8 @@ object AppModule {
             musicDao = musicDao,
             lyricsRepository = lyricsRepository,
             telegramDao = telegramDao,
-            telegramCacheManager = telegramCacheManager,
-            telegramRepository = telegramRepository,
+            telegramCacheManagerProvider = telegramCacheManager,
+            telegramRepositoryProvider = telegramRepository,
             songRepository = songRepository,
             favoritesDao = favoritesDao,
             artistImageRepository = artistImageRepository,
