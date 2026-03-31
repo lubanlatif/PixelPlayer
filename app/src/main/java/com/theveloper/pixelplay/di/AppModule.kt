@@ -369,9 +369,10 @@ object AppModule {
     fun provideSongMetadataEditor(
         @ApplicationContext context: Context,
         musicDao: MusicDao,
-        telegramDao: com.theveloper.pixelplay.data.database.TelegramDao
+        telegramDao: com.theveloper.pixelplay.data.database.TelegramDao,
+        userPreferencesRepository: UserPreferencesRepository
     ): SongMetadataEditor {
-        return SongMetadataEditor(context, musicDao, telegramDao)
+        return SongMetadataEditor(context, musicDao, telegramDao, userPreferencesRepository)
     }
 
     /**

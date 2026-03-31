@@ -199,7 +199,10 @@ fun ArtistSettingsScreen(
                         )
                     }
                 ) {
-                    Column(modifier = Modifier.clip(shape = RoundedCornerShape(24.dp))) {
+                    Column(
+                        modifier = Modifier.clip(shape = RoundedCornerShape(24.dp)),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
                         // Configure Character Delimiters
                         SettingsItem(
                             title = "Character Delimiters",

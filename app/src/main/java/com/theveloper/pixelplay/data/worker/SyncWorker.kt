@@ -34,7 +34,6 @@ import com.theveloper.pixelplay.utils.AudioMetaUtils.getAudioMetadata
 import com.theveloper.pixelplay.utils.DirectoryRuleResolver
 import com.theveloper.pixelplay.utils.LocalArtworkUri
 import com.theveloper.pixelplay.utils.normalizeMetadataTextOrEmpty
-import com.theveloper.pixelplay.utils.extractArtistsFromTitle
 import com.theveloper.pixelplay.utils.splitArtistsByDelimiters
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -439,24 +438,16 @@ constructor(
             val songArtistNameTrimmed = rawArtistName.trim()
 
             // Split artist field by character + word delimiters
-            val splitFromArtist =
-                    artistSplitCache.getOrPut(rawArtistName) {
-                        rawArtistName.splitArtistsByDelimiters(artistDelimiters, wordDelimiters)
+            val allArtistsForSong =
+                    artistSplitCache.getOrPut("$rawArtistName\u0000${song.title}\u0000$extractFromTitle") {
+                        collectArtistNames(
+                            rawArtistName = rawArtistName,
+                            title = song.title,
+                            artistDelimiters = artistDelimiters,
+                            wordDelimiters = wordDelimiters,
+                            extractFromTitle = extractFromTitle
+                        )
                     }
-
-            // Extract featured artists from title if enabled
-            val allArtistsForSong = if (extractFromTitle) {
-                val (_, titleArtists) = song.title.extractArtistsFromTitle(artistDelimiters, wordDelimiters)
-                val combined = splitFromArtist.toMutableList()
-                titleArtists.forEach { ta ->
-                    if (combined.none { it.equals(ta, ignoreCase = true) }) {
-                        combined.add(ta)
-                    }
-                }
-                combined
-            } else {
-                splitFromArtist
-            }
 
             allArtistsForSong.forEach { artistName ->
                 val normalizedName = artistName.trim()
@@ -891,17 +882,16 @@ constructor(
 
                             val song = if (localSong != null) {
                                 // Preserve user-edited fields
-                                val mediaStoreArtists = mediaStoreSong.artistName.splitArtistsByDelimiters(artistDelimiters, artistWordDelimiters)
-                                val mediaStorePrimaryArtist = mediaStoreArtists.firstOrNull()?.trim()
-                                val shouldPreserveArtistName = (mediaStoreArtists.size > 1 &&
-                                    mediaStorePrimaryArtist != null &&
-                                    localSong.artistName.trim() == mediaStorePrimaryArtist)
-
                                 mediaStoreSong.copy(
                                     dateAdded = localSong.dateAdded,
                                     lyrics = localSong.lyrics,
                                     title = if (localSong.title.isNotBlank() && localSong.title != mediaStoreSong.title) localSong.title else mediaStoreSong.title,
-                                    artistName = if (shouldPreserveArtistName) localSong.artistName else mediaStoreSong.artistName,
+                                    artistName = choosePreferredArtistName(
+                                        localArtistName = localSong.artistName,
+                                        mediaStoreArtistName = mediaStoreSong.artistName,
+                                        artistDelimiters = artistDelimiters,
+                                        wordDelimiters = artistWordDelimiters
+                                    ),
                                     albumName = if (localSong.albumName.isNotBlank() && localSong.albumName != mediaStoreSong.albumName) localSong.albumName else mediaStoreSong.albumName,
                                     genre = localSong.genre ?: mediaStoreSong.genre,
                                     trackNumber = if (localSong.trackNumber != 0) localSong.trackNumber else mediaStoreSong.trackNumber,
