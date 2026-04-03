@@ -128,13 +128,10 @@ private const val ENABLE_FOLDERS_SOURCE_SWITCHING = false
 private const val MAX_ALBUM_BATCH_SELECTION = 6
 private const val SONG_ID_QUERY_CHUNK_SIZE = 900
 
-data class PlaybackAudioMetadata(
-    val mediaId: String? = null,
-    val mimeType: String? = null,
-    val bitrate: Int? = null,
-    val sampleRate: Int? = null,
     val channelCount: Int? = null,
-    val bitDepth: Int? = null
+    val bitDepth: Int? = null,
+    val isHiRes: Boolean = false,
+    val isDsd: Boolean = false
 )
 
 private data class SortOptionsSnapshot(
@@ -1015,19 +1012,11 @@ class PlayerViewModel @Inject constructor(
     // calls. Each emission from any of them caused a recompose of the entire 2k-line
     // composable. Now a single collect + distinctUntilChanged batches all settings.
     // ---------------------------------------------------------------------------
-    data class FullPlayerSlice(
-        val currentSongArtists: List<Artist> = emptyList(),
-        val lyricsSyncOffset: Int = 0,
-        val albumArtQuality: AlbumArtQuality = AlbumArtQuality.MEDIUM,
-        val audioMetadata: PlaybackAudioMetadata = PlaybackAudioMetadata(),
-        val showPlayerFileInfo: Boolean = true,
-        val immersiveLyricsEnabled: Boolean = false,
-        val immersiveLyricsTimeout: Long = 4000L,
-        val isImmersiveTemporarilyDisabled: Boolean = false,
         val isRemotePlaybackActive: Boolean = false,
         val selectedRouteName: String? = null,
         val isBluetoothEnabled: Boolean = false,
-        val bluetoothName: String? = null
+        val bluetoothName: String? = null,
+        val internalHiResEnabled: Boolean = false
     )
 
     // Intermediate combine #1: 5 settings flows
@@ -1054,11 +1043,12 @@ class PlayerViewModel @Inject constructor(
         immersiveLyricsTimeout,
         isImmersiveTemporarilyDisabled,
         isRemotePlaybackActive,
+        dualPlayerEngine.internalHiResEnabled,
         combine(selectedRouteName, bluetoothSlice) { route, bt -> route to bt }
     ) { immersive: Boolean, immersiveTimeout: Long, immersiveDisabled: Boolean,
-        remotePb: Boolean, routeAndBt: Pair<String?, BluetoothSlice> ->
+        remotePb: Boolean, hiResEnabled: Boolean, routeAndBt: Pair<String?, BluetoothSlice> ->
         val (routeName, bt) = routeAndBt
-        FullPlayerSlicePart2(immersive, immersiveTimeout, immersiveDisabled, remotePb, routeName, bt.enabled, bt.name)
+        FullPlayerSlicePart2(immersive, immersiveTimeout, immersiveDisabled, remotePb, hiResEnabled, routeName, bt.enabled, bt.name)
     }
 
     private data class FullPlayerSlicePart1(
@@ -1069,14 +1059,10 @@ class PlayerViewModel @Inject constructor(
         val showPlayerFileInfo: Boolean
     )
 
-    private data class FullPlayerSlicePart2(
-        val immersiveLyricsEnabled: Boolean,
-        val immersiveLyricsTimeout: Long,
-        val isImmersiveTemporarilyDisabled: Boolean,
-        val isRemotePlaybackActive: Boolean,
         val selectedRouteName: String?,
         val isBluetoothEnabled: Boolean,
-        val bluetoothName: String?
+        val bluetoothName: String?,
+        val internalHiResEnabled: Boolean
     )
 
     val fullPlayerSlice: StateFlow<FullPlayerSlice> = combine(
@@ -1095,7 +1081,8 @@ class PlayerViewModel @Inject constructor(
             isRemotePlaybackActive = p2.isRemotePlaybackActive,
             selectedRouteName = p2.selectedRouteName,
             isBluetoothEnabled = p2.isBluetoothEnabled,
-            bluetoothName = p2.bluetoothName
+            bluetoothName = p2.bluetoothName,
+            internalHiResEnabled = p2.internalHiResEnabled
         )
     }
         .distinctUntilChanged()
@@ -2309,7 +2296,11 @@ class PlayerViewModel @Inject constructor(
                 sampleRate = selectedAudioFormat?.sampleRate?.takeIf { it > 0 }
                     ?: current?.sampleRate,
                 channelCount = selectedAudioFormat?.channelCount?.takeIf { it > 0 } ?: current?.channelCount,
-                bitDepth = selectedAudioFormat?.pcmEncoding?.let(::extractBitDepthFromPcmEncoding) ?: current?.bitDepth
+                bitDepth = selectedAudioFormat?.pcmEncoding?.let(::extractBitDepthFromPcmEncoding) ?: current?.bitDepth,
+                isHiRes = (selectedAudioFormat?.sampleRate ?: 0) > 48000 || (selectedAudioFormat?.bitrate ?: 0) > 1000000,
+                isDsd = selectedAudioFormat?.sampleMimeType?.contains("dsd", ignoreCase = true) == true ||
+                        selectedAudioFormat?.sampleMimeType?.contains("dsf", ignoreCase = true) == true ||
+                        selectedAudioFormat?.sampleMimeType?.contains("dff", ignoreCase = true) == true
             )
 
             _playbackAudioMetadata.value = metadata

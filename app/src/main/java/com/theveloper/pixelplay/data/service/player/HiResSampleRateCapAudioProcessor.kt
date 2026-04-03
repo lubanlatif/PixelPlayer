@@ -16,9 +16,16 @@ import kotlin.math.ceil
  * preserving normal playback for standard and regular hi-res files.
  */
 @UnstableApi
-class HiResSampleRateCapAudioProcessor(
-    private val maxOutputSampleRateHz: Int = 192_000
-) : AudioProcessor {
+class HiResSampleRateCapAudioProcessor : AudioProcessor {
+
+    var maxOutputSampleRateHz: Int = 192_000
+        set(value) {
+            if (field != value) {
+                field = value
+                // We don't call requestReconfigure() because Media3 AudioProcessor 
+                // doesn't have it, but the next time configure() is called it will use this.
+            }
+        }
 
     private var inputFormat: AudioFormat = AudioFormat.NOT_SET
     private var outputFormat: AudioFormat = AudioFormat.NOT_SET
@@ -28,7 +35,10 @@ class HiResSampleRateCapAudioProcessor(
     private var inputEnded = false
 
     override fun configure(inputAudioFormat: AudioFormat): AudioFormat {
-        val shouldDownsample = inputAudioFormat.encoding == C.ENCODING_PCM_16BIT &&
+        val isSupportedPcm = inputAudioFormat.encoding == C.ENCODING_PCM_16BIT || 
+                           inputAudioFormat.encoding == C.ENCODING_PCM_FLOAT
+        
+        val shouldDownsample = isSupportedPcm &&
             inputAudioFormat.channelCount > 0 &&
             inputAudioFormat.sampleRate > maxOutputSampleRateHz
 
@@ -48,7 +58,7 @@ class HiResSampleRateCapAudioProcessor(
         outputFormat = AudioFormat(
             inputAudioFormat.sampleRate / downsampleFactor,
             inputAudioFormat.channelCount,
-            C.ENCODING_PCM_16BIT
+            inputAudioFormat.encoding
         )
         pendingBytes = ByteArray(0)
         return outputFormat
@@ -72,7 +82,8 @@ class HiResSampleRateCapAudioProcessor(
             newBytes.copyInto(combinedBytes, destinationOffset = pendingBytes.size)
         }
 
-        val bytesPerFrame = inputFormat.channelCount * Short.SIZE_BYTES
+        val bytesPerSample = if (inputFormat.encoding == C.ENCODING_PCM_FLOAT) 4 else 2
+        val bytesPerFrame = inputFormat.channelCount * bytesPerSample
         val processableFrameCount = (combinedBytes.size / bytesPerFrame) / downsampleFactor
         val processableBytes = processableFrameCount * downsampleFactor * bytesPerFrame
         val requiredCapacity = processableFrameCount * bytesPerFrame
@@ -91,26 +102,33 @@ class HiResSampleRateCapAudioProcessor(
             outputBuffer
         }
 
-        val shortInput = ByteBuffer
+        val inputBuf = ByteBuffer
             .wrap(combinedBytes, 0, processableBytes)
             .order(ByteOrder.nativeOrder())
-            .asShortBuffer()
-
-        val channelAccumulator = IntArray(inputFormat.channelCount)
 
         repeat(processableFrameCount) {
-            java.util.Arrays.fill(channelAccumulator, 0)
-
-            repeat(downsampleFactor) {
-                for (channel in 0 until inputFormat.channelCount) {
-                    channelAccumulator[channel] += shortInput.get().toInt()
+            if (inputFormat.encoding == C.ENCODING_PCM_FLOAT) {
+                val channelAccumulator = FloatArray(inputFormat.channelCount)
+                repeat(downsampleFactor) {
+                    for (channel in 0 until inputFormat.channelCount) {
+                        channelAccumulator[channel] += inputBuf.getFloat()
+                    }
                 }
-            }
-
-            for (channel in 0 until inputFormat.channelCount) {
-                val averaged = (channelAccumulator[channel] / downsampleFactor)
-                    .coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
-                outputBuffer.putShort(averaged.toShort())
+                for (channel in 0 until inputFormat.channelCount) {
+                    outputBuffer.putFloat(channelAccumulator[channel] / downsampleFactor)
+                }
+            } else {
+                val channelAccumulator = IntArray(inputFormat.channelCount)
+                repeat(downsampleFactor) {
+                    for (channel in 0 until inputFormat.channelCount) {
+                        channelAccumulator[channel] += inputBuf.getShort().toInt()
+                    }
+                }
+                for (channel in 0 until inputFormat.channelCount) {
+                    val averaged = (channelAccumulator[channel] / downsampleFactor)
+                        .coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
+                    outputBuffer.putShort(averaged.toShort())
+                }
             }
         }
 

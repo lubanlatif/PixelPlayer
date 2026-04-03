@@ -825,6 +825,23 @@ fun SettingsCategoryScreen(
                                         }
                                     }
                                 }
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                val internalHiResSubtitle = if (uiState.isInternalHiResSupported) {
+                                    "Bypass Android system sample rate limits for the internal DAC."
+                                } else {
+                                    "Your device's internal DAC does not report support for sample rates above 48kHz."
+                                }
+
+                                SwitchSettingItem(
+                                    title = "Internal Hi-Res",
+                                    subtitle = internalHiResSubtitle,
+                                    checked = uiState.internalHiResEnabled,
+                                    enabled = uiState.isInternalHiResSupported,
+                                    onCheckedChange = { settingsViewModel.setInternalHiResEnabled(it) },
+                                    leadingIcon = { Icon(painterResource(R.drawable.rounded_high_quality_24), null, tint = if (uiState.isInternalHiResSupported) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)) }
+                                )
                             }
                         }
                         SettingsCategory.BEHAVIOR -> {

@@ -109,7 +109,10 @@ private val AUDIO_MIME_OVERRIDES = mapOf(
     "audio/3gpp" to "3gp",
     "audio/3gpp2" to "3g2",
     "audio/amr" to "amr",
-    "audio/x-ms-wma" to "wma"
+    "audio/x-ms-wma" to "wma",
+    "audio/x-dsf" to "dsf",
+    "audio/x-dff" to "dff",
+    "audio/dsd" to "dsd"
 )
 
 internal fun isValidImageData(data: ByteArray): Boolean {

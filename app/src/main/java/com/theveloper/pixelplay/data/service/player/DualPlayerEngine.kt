@@ -43,6 +43,8 @@ import androidx.media3.datasource.ResolvingDataSource
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DataSpec
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
+import com.theveloper.pixelplay.data.service.usbaudio.UsbAudioManager
 import android.net.Uri
 import java.io.File
 
@@ -63,7 +65,9 @@ class DualPlayerEngine @Inject constructor(
     private val qqMusicStreamProxy: QqMusicStreamProxy,
     private val navidromeStreamProxy: NavidromeStreamProxy,
     private val telegramCacheManager: com.theveloper.pixelplay.data.telegram.TelegramCacheManager,
-    private val connectivityStateHolder: com.theveloper.pixelplay.presentation.viewmodel.ConnectivityStateHolder
+    private val connectivityStateHolder: com.theveloper.pixelplay.presentation.viewmodel.ConnectivityStateHolder,
+    private val userPreferencesRepository: UserPreferencesRepository,
+    private val usbAudioManager: UsbAudioManager
 ) {
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var transitionJob: Job? = null
@@ -71,6 +75,8 @@ class DualPlayerEngine @Inject constructor(
 
     private lateinit var playerA: ExoPlayer
     private lateinit var playerB: ExoPlayer
+    private lateinit var processorA: HiResSampleRateCapAudioProcessor
+    private lateinit var processorB: HiResSampleRateCapAudioProcessor
 
     private val onPlayerSwappedListeners = mutableListOf<(Player) -> Unit>()
     private val onTransitionFinishedListeners = mutableListOf<() -> Unit>()
@@ -254,6 +260,24 @@ class DualPlayerEngine @Inject constructor(
         _activeAudioSessionId.value = playerA.audioSessionId
         
         isReleased = false
+
+        // Listen for preference changes to update processors
+        scope.launch {
+            combine(
+                userPreferencesRepository.internalHiResEnabledFlow,
+                userPreferencesRepository.usbDacModeEnabledFlow,
+                usbAudioManager.connectedUsbDac
+            ) { internalEnabled, usbExclusiveEnabled, connectedDac ->
+                Triple(internalEnabled, usbExclusiveEnabled, connectedDac != null)
+            }.collect { (internalEnabled, usbExclusiveEnabled, isUsbConnected) ->
+                val uncap = (usbExclusiveEnabled && isUsbConnected) || internalEnabled
+                val maxRate = if (uncap) 768_000 else 48_000
+                
+                Timber.tag("DualPlayerEngine").i("Updating Audio Processor caps: uncap=$uncap, maxRate=$maxRate")
+                if (::processorA.isInitialized) processorA.maxOutputSampleRateHz = maxRate
+                if (::processorB.isInitialized) processorB.maxOutputSampleRateHz = maxRate
+            }
+        }
     }
 
     private fun requestAudioFocus() {
@@ -292,21 +316,25 @@ class DualPlayerEngine @Inject constructor(
                 enableFloatOutput: Boolean,
                 enableAudioOutputPlaybackParams: Boolean
             ): AudioSink {
-                // Keep Media3's default renderer wiring intact and only customize the sink.
+                val processor = HiResSampleRateCapAudioProcessor()
+                if (!::processorA.isInitialized) {
+                    processorA = processor
+                } else {
+                    processorB = processor
+                }
+
                 return DefaultAudioSink.Builder(context)
-                    .setEnableFloatOutput(false) // Disable Float output to fix CCodec/Hardware errors on some devices
+                    .setEnableFloatOutput(true) // Always enable, we cap sample rate via processor
                     .setEnableAudioOutputPlaybackParameters(enableAudioOutputPlaybackParams)
                     .setAudioProcessorChain(
-                        // Downsample >192 kHz before AudioTrack to avoid ultra-hi-res device hangs,
-                        // then downmix multichannel PCM when stereo output is required.
                         DefaultAudioSink.DefaultAudioProcessorChain(
-                            HiResSampleRateCapAudioProcessor(),
+                            processor,
                             SurroundDownmixProcessor()
                         )
                     )
                     .build()
             }
-        }.setEnableAudioFloatOutput(false) // Disable Float output helper
+        }.setEnableAudioFloatOutput(true) 
          .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
 
         val audioAttributes = AudioAttributes.Builder()

@@ -1072,7 +1072,7 @@ constructor(
 
             // Collect audio files from filesystem that are NOT in MediaStore
             val audioExtensions =
-                    setOf("mp3", "flac", "m4a", "wav", "ogg", "opus", "aac", "wma", "aiff")
+                    setOf("mp3", "flac", "m4a", "wav", "ogg", "opus", "aac", "wma", "aiff", "dsf", "dff")
             val newFilesToScan = linkedSetOf<String>()
 
             scanRoots.forEach { root ->

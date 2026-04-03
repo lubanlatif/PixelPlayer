@@ -518,10 +518,7 @@ fun FullPlayerContent(
     val playerProgressSection: @Composable () -> Unit = {
         FullPlayerProgressSection(
             song = song,
-            playbackMetadataMediaId = playbackAudioMetadata.mediaId,
-            playbackMetadataMimeType = playbackAudioMetadata.mimeType,
-            playbackMetadataBitrate = playbackAudioMetadata.bitrate,
-            playbackMetadataSampleRate = playbackAudioMetadata.sampleRate,
+            playbackAudioMetadata = playbackAudioMetadata,
             currentPositionProvider = currentPositionProvider,
             totalDurationValue = totalDurationValue,
             showPlayerFileInfo = showPlayerFileInfo,
@@ -533,7 +530,8 @@ fun FullPlayerContent(
             playerOnBaseColor = playerOnBaseColor,
             allowRealtimeUpdates = allowRealtimeUpdates,
             isSheetDragGestureActive = isSheetDragGestureActive,
-            loadingTweaks = loadingTweaks
+            loadingTweaks = loadingTweaks,
+            internalHiResEnabled = fullPlayerSlice.internalHiResEnabled
         )
     }
 
@@ -1189,10 +1187,7 @@ private fun FullPlayerControlsSection(
 @Composable
 private fun FullPlayerProgressSection(
     song: Song,
-    playbackMetadataMediaId: String?,
-    playbackMetadataMimeType: String?,
-    playbackMetadataBitrate: Int?,
-    playbackMetadataSampleRate: Int?,
+    playbackAudioMetadata: PlaybackAudioMetadata,
     currentPositionProvider: () -> Long,
     totalDurationValue: Long,
     showPlayerFileInfo: Boolean,
@@ -1204,17 +1199,22 @@ private fun FullPlayerProgressSection(
     playerOnBaseColor: Color,
     allowRealtimeUpdates: Boolean,
     isSheetDragGestureActive: Boolean,
-    loadingTweaks: FullPlayerLoadingTweaks
+    loadingTweaks: FullPlayerLoadingTweaks,
+    internalHiResEnabled: Boolean
 ) {
-    val isMetadataForCurrentSong = playbackMetadataMediaId == song.id
+    val isMetadataForCurrentSong = playbackAudioMetadata.mediaId == song.id
     PlayerProgressBarSection(
         songId = song.id,
         currentPositionProvider = currentPositionProvider,
         totalDurationValue = totalDurationValue,
         songDurationHintMs = song.duration,
-        audioMimeType = if (isMetadataForCurrentSong) playbackMetadataMimeType else null,
-        audioBitrate = if (isMetadataForCurrentSong) playbackMetadataBitrate else null,
-        audioSampleRate = if (isMetadataForCurrentSong) playbackMetadataSampleRate else null,
+        audioMimeType = if (isMetadataForCurrentSong) playbackAudioMetadata.mimeType else null,
+        audioBitrate = if (isMetadataForCurrentSong) playbackAudioMetadata.bitrate else null,
+        audioSampleRate = if (isMetadataForCurrentSong) playbackAudioMetadata.sampleRate else null,
+        audioBitDepth = if (isMetadataForCurrentSong) playbackAudioMetadata.bitDepth else null,
+        isHiRes = if (isMetadataForCurrentSong) (playbackAudioMetadata.isHiRes) else false,
+        isDsd = if (isMetadataForCurrentSong) (playbackAudioMetadata.isDsd) else false,
+        internalHiResEnabled = internalHiResEnabled,
         showAudioFileInfo = showPlayerFileInfo,
         onSeek = onSeek,
         expansionFractionProvider = expansionFractionProvider,
@@ -1574,21 +1574,51 @@ private fun SongMetadataDisplaySection(
     }
 }
 
-private fun formatAudioMetaLabel(mimeType: String?, bitrate: Int?, sampleRate: Int?): String? {
+private fun formatAudioMetaLabel(
+    mimeType: String?, 
+    bitrate: Int?, 
+    sampleRate: Int?,
+    bitDepth: Int? = null,
+    isHiRes: Boolean = false,
+    isDsd: Boolean = false
+): String? {
     val formatLabel = mimeTypeToFormat(mimeType)
         .takeIf { it != "-" }
         ?.uppercase(Locale.getDefault())
 
     val parts = buildList {
-        sampleRate?.takeIf { it > 0 }?.let { add(String.format(Locale.US, "%.1f kHz", it / 1000.0)) }
+        if (isDsd) {
+            // Estimate DSD rate from sample rate if available (e.g. 2822400 -> DSD64)
+            sampleRate?.let { rate ->
+                val dsdRate = when {
+                    rate >= 22579200 -> "DSD512"
+                    rate >= 11289600 -> "DSD256"
+                    rate >= 5644800 -> "DSD128"
+                    rate >= 2822400 -> "DSD64"
+                    else -> null
+                }
+                if (dsdRate != null) add(dsdRate)
+            } ?: add("DSD")
+        }
+
+        sampleRate?.takeIf { it > 0 }?.let { 
+            if (isDsd) {
+                 add(String.format(Locale.US, "%.2f MHz", it / 1_000_000.0))
+            } else {
+                 add(String.format(Locale.US, "%.1f kHz", it / 1000.0)) 
+            }
+        }
+
+        bitDepth?.takeIf { it > 0 }?.let { add("${it}-bit") }
+        
         bitrate?.takeIf { it > 0 }?.let { bitrateValue ->
             val kbpsLabel = "${bitrateValue / 1000} kbps"
-            if (formatLabel != null) {
+            if (formatLabel != null && !isDsd) {
                 add("$kbpsLabel \u2022 $formatLabel")
-            } else {
+            } else if (!isDsd) {
                 add(kbpsLabel)
             }
-        } ?: formatLabel?.let { add(it) }
+        } ?: formatLabel?.let { if (!isDsd) add(it) }
     }
     return parts.takeIf { it.isNotEmpty() }?.joinToString(" \u2022 ")
 }
@@ -1602,6 +1632,10 @@ private fun PlayerProgressBarSection(
     audioMimeType: String?,
     audioBitrate: Int?,
     audioSampleRate: Int?,
+    audioBitDepth: Int?,
+    isHiRes: Boolean,
+    isDsd: Boolean,
+    internalHiResEnabled: Boolean,
     showAudioFileInfo: Boolean,
     onSeek: (Long) -> Unit,
     expansionFractionProvider: () -> Float,
@@ -1631,12 +1665,15 @@ private fun PlayerProgressBarSection(
         kotlin.math.abs(reportedDuration - hintDuration) <= 1500L -> reportedDuration
         else -> minOf(reportedDuration, hintDuration)
     }
-    val audioMetaLabel = remember(showAudioFileInfo, audioMimeType, audioBitrate, audioSampleRate) {
+    val audioMetaLabel = remember(showAudioFileInfo, audioMimeType, audioBitrate, audioSampleRate, audioBitDepth, isHiRes, isDsd) {
         if (showAudioFileInfo) {
             formatAudioMetaLabel(
                 mimeType = audioMimeType,
                 bitrate = audioBitrate,
-                sampleRate = audioSampleRate
+                sampleRate = audioSampleRate,
+                bitDepth = audioBitDepth,
+                isHiRes = isHiRes,
+                isDsd = isDsd
             )
         } else {
             null
@@ -1787,6 +1824,8 @@ private fun PlayerProgressBarSection(
                 isVisible = isVisible,
                 textColor = timeTextColor,
                 audioMetaLabel = displayAudioMetaLabel,
+                isHiRes = isHiRes || isDsd,
+                internalHiResEnabled = internalHiResEnabled,
                 horizontalTrackInset = progressSectionHorizontalInset
             )
         }
@@ -1844,6 +1883,8 @@ private fun EfficientTimeLabels(
     isVisible: Boolean,
     textColor: Color,
     audioMetaLabel: String?,
+    isHiRes: Boolean,
+    internalHiResEnabled: Boolean,
     horizontalTrackInset: Dp
 ) {
     val coarsePositionMs by remember(isVisible, positionState) {
@@ -1886,24 +1927,49 @@ private fun EfficientTimeLabels(
         }
 
         if (!audioMetaLabel.isNullOrBlank()) {
-            Surface(
+            val hqLabel = if (internalHiResEnabled && isHiRes) "INT HI-RES" else if (isHiRes) "HI-RES" else null
+            
+            Row(
                 modifier = Modifier
                     .align(Alignment.Center)
                     .padding(horizontal = 58.dp),
-                shape = RoundedCornerShape(999.dp),
-                color = textColor.copy(alpha = 0.14f),
-                contentColor = textColor.copy(alpha = 0.96f)
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                Text(
-                    text = audioMetaLabel,
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 11.sp
-                    ),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
-                )
+                if (hqLabel != null) {
+                    Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = textColor.copy(alpha = 0.25f),
+                        contentColor = textColor
+                    ) {
+                        Text(
+                            text = hqLabel,
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 9.sp,
+                                letterSpacing = 0.5.sp
+                            ),
+                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                        )
+                    }
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(999.dp),
+                    color = textColor.copy(alpha = 0.14f),
+                    contentColor = textColor.copy(alpha = 0.96f)
+                ) {
+                    Text(
+                        text = audioMetaLabel,
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 11.sp
+                        ),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
+                    )
+                }
             }
         }
     }

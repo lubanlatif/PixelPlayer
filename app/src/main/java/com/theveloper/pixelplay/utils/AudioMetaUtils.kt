@@ -136,6 +136,15 @@ object AudioMetaUtils {
             normalized == "audio/vnd.dts" ||
                 normalized == "audio/vnd.dts.hd" -> "dts"
 
+            normalized == "audio/x-dsf" || 
+                normalized == "audio/dsf" -> "dsf"
+
+            normalized == "audio/x-dff" || 
+                normalized == "audio/dff" -> "dff"
+
+            normalized == "audio/dsd" || 
+                normalized == "audio/x-dsd" -> "dsd"
+
             normalized.contains("mp4a") -> "m4a"
             normalized.contains("flac") -> "flac"
             normalized.contains("opus") -> "opus"
@@ -149,6 +158,9 @@ object AudioMetaUtils {
             normalized.contains("wma") -> "wma"
             normalized.contains("dts") -> "dts"
             normalized.contains("eac3") || normalized.contains("ac3") -> "ac3"
+            normalized.contains("dsf") -> "dsf"
+            normalized.contains("dff") -> "dff"
+            normalized.contains("dsd") -> "dsd"
             normalized.startsWith("audio/") -> normalized.substringAfter("audio/").ifBlank { "-" }
             else -> "-"
         }

@@ -227,6 +227,7 @@ constructor(
 
         // USB DAC Mode
         val USB_DAC_MODE_ENABLED = booleanPreferencesKey("usb_dac_mode_enabled")
+        val INTERNAL_HI_RES_ENABLED = booleanPreferencesKey("internal_hi_res_enabled")
     }
 
     val appRebrandDialogShownFlow: Flow<Boolean> =
@@ -793,6 +794,17 @@ constructor(
     suspend fun setShowQueueHistory(show: Boolean) {
         dataStore.edit { preferences ->
             preferences[PreferencesKeys.SHOW_QUEUE_HISTORY] = show
+        }
+    }
+
+    val internalHiResEnabledFlow: Flow<Boolean> =
+            dataStore.data.map { preferences ->
+                preferences[PreferencesKeys.INTERNAL_HI_RES_ENABLED] ?: false
+            }
+
+    suspend fun setInternalHiResEnabled(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[PreferencesKeys.INTERNAL_HI_RES_ENABLED] = enabled
         }
     }
 

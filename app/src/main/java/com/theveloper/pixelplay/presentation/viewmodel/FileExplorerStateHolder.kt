@@ -92,7 +92,7 @@ class FileExplorerStateHolder(
     val currentDirectoryChildren: StateFlow<List<DirectoryEntry>> = _currentDirectoryChildren.asStateFlow()
 
     private val audioExtensions = setOf(
-        "mp3", "flac", "m4a", "aac", "wav", "ogg", "opus", "wma", "alac", "aiff", "ape"
+        "mp3", "flac", "m4a", "aac", "wav", "ogg", "opus", "wma", "alac", "aiff", "ape", "dsf", "dff"
     )
 
     private val mapperDispatcher = Dispatchers.Default
