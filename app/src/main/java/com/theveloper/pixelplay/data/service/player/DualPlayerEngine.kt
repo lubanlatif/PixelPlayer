@@ -14,6 +14,7 @@ import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
+import android.media.AudioDeviceInfo
 import androidx.media3.extractor.DefaultExtractorsFactory
 import androidx.media3.extractor.mp4.Mp4Extractor
 //import androidx.media3.exoplayer.ffmpeg.FfmpegAudioRenderer
@@ -197,6 +198,19 @@ class DualPlayerEngine @Inject constructor(
         get() = playerA
 
     fun isTransitionRunning(): Boolean = transitionRunning
+
+    /**
+     * Routes audio for both underlying ExoPlayer instances to a preferred device.
+     */
+    fun setUsbPreferredDevice(device: AudioDeviceInfo?) {
+        try {
+            playerA.setPreferredAudioDevice(device)
+            playerB.setPreferredAudioDevice(device)
+            Timber.tag("DualPlayerEngine").i("Applied preferred audio device: ${device?.productName}")
+        } catch (e: Exception) {
+            Timber.tag("DualPlayerEngine").e(e, "Failed to apply preferred audio device")
+        }
+    }
 
     /**
      * Returns the audio session ID of the master player.

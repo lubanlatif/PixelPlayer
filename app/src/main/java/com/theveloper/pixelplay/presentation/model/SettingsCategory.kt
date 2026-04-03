@@ -36,6 +36,12 @@ enum class SettingsCategory(
         subtitle = "Audio behavior, crossfade, and background play",
         icon = Icons.Rounded.MusicNote // Using MusicNote again or maybe PlayCircle if available
     ),
+    USB_AUDIO(
+        id = "usb_audio",
+        title = "USB Audio",
+        subtitle = "Exclusive USB DAC routing and bit-perfect options",
+        iconRes = R.drawable.rounded_headphones_24
+    ),
     BEHAVIOR(
         id = "behavior",
         title = "Behavior",

@@ -224,6 +224,9 @@ constructor(
         // ReplayGain
         val REPLAYGAIN_ENABLED = booleanPreferencesKey("replaygain_enabled")
         val REPLAYGAIN_USE_ALBUM_GAIN = booleanPreferencesKey("replaygain_use_album_gain")
+
+        // USB DAC Mode
+        val USB_DAC_MODE_ENABLED = booleanPreferencesKey("usb_dac_mode_enabled")
     }
 
     val appRebrandDialogShownFlow: Flow<Boolean> =
@@ -1722,4 +1725,19 @@ constructor(
             it.remove(PreferencesKeys.LAST_PLAYLIST_NAME)
         }
     }
+
+    // ===== USB DAC Mode =====
+
+    val usbDacModeEnabledFlow: Flow<Boolean> =
+        dataStore.data.map { preferences ->
+            preferences[PreferencesKeys.USB_DAC_MODE_ENABLED] ?: false
+        }
+
+    suspend fun setUsbDacModeEnabled(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[PreferencesKeys.USB_DAC_MODE_ENABLED] = enabled
+        }
+    }
+
+    // ===== End USB DAC Mode =====
 }

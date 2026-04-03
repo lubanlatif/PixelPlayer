@@ -42,6 +42,7 @@ import com.theveloper.pixelplay.data.ai.provider.AiClientFactory
 import com.theveloper.pixelplay.data.ai.provider.AiProvider
 import com.theveloper.pixelplay.data.preferences.LaunchTab
 import com.theveloper.pixelplay.data.model.Song
+import com.theveloper.pixelplay.data.service.usbaudio.UsbAudioManager
 import java.io.File
 
 data class SettingsUiState(
@@ -93,7 +94,10 @@ data class SettingsUiState(
     val collageAutoRotate: Boolean = false,
     val minSongDuration: Int = 10000,
     val replayGainEnabled: Boolean = false,
-    val replayGainUseAlbumGain: Boolean = false
+    val replayGainUseAlbumGain: Boolean = false,
+    // USB DAC Mode
+    val usbDacModeEnabled: Boolean = false,
+    val connectedUsbDacName: String? = null
 )
 
 data class FailedSongInfo(
@@ -162,6 +166,7 @@ class SettingsViewModel @Inject constructor(
     private val lyricsRepository: LyricsRepository,
     private val musicRepository: MusicRepository,
     private val backupManager: BackupManager,
+    private val usbAudioManager: UsbAudioManager,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -421,6 +426,19 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             userPreferencesRepository.replayGainUseAlbumGainFlow.collect { useAlbum ->
                 _uiState.update { it.copy(replayGainUseAlbumGain = useAlbum) }
+            }
+        }
+
+        // USB DAC Mode
+        viewModelScope.launch {
+            userPreferencesRepository.usbDacModeEnabledFlow.collect { enabled ->
+                _uiState.update { it.copy(usbDacModeEnabled = enabled) }
+            }
+        }
+
+        viewModelScope.launch {
+            usbAudioManager.connectedUsbDac.collect { device ->
+                _uiState.update { it.copy(connectedUsbDacName = device?.productName?.toString()) }
             }
         }
     }
@@ -733,6 +751,12 @@ class SettingsViewModel @Inject constructor(
     fun setReplayGainUseAlbumGain(useAlbumGain: Boolean) {
         viewModelScope.launch {
             userPreferencesRepository.setReplayGainUseAlbumGain(useAlbumGain)
+        }
+    }
+
+    fun setUsbDacModeEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setUsbDacModeEnabled(enabled)
         }
     }
 

@@ -766,7 +766,66 @@ fun SettingsCategoryScreen(
                                     leadingIcon = { Icon(painterResource(R.drawable.rounded_queue_music_24), null, tint = MaterialTheme.colorScheme.secondary) }
                                 )
                             }
+                        }
+                        SettingsCategory.USB_AUDIO -> {
+                            SettingsSubsection(
+                                title = "USB DAC Mode",
+                                addBottomSpace = false
+                            ) {
+                                SwitchSettingItem(
+                                    title = "Exclusive USB Audio",
+                                    subtitle = "Bypass Android system mixer for bit-perfect playback. Requires a connected USB DAC.",
+                                    checked = uiState.usbDacModeEnabled,
+                                    onCheckedChange = { settingsViewModel.setUsbDacModeEnabled(it) },
+                                    leadingIcon = { Icon(painterResource(R.drawable.rounded_surround_sound_24), null, tint = MaterialTheme.colorScheme.secondary) }
+                                )
 
+                                if (uiState.usbDacModeEnabled) {
+                                    val statusText = if (uiState.connectedUsbDacName != null) {
+                                        "Connected: ${uiState.connectedUsbDacName}"
+                                    } else {
+                                        "No DAC detected. Connect a USB DAC to use this mode."
+                                    }
+                                    
+                                    Surface(
+                                        color = if (uiState.connectedUsbDacName != null) 
+                                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                                        else 
+                                            MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
+                                        shape = RoundedCornerShape(12.dp),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 12.dp, vertical = 8.dp)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(12.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = if (uiState.connectedUsbDacName != null) 
+                                                    Icons.Rounded.Check 
+                                                else 
+                                                    Icons.Rounded.Close,
+                                                contentDescription = null,
+                                                tint = if (uiState.connectedUsbDacName != null)
+                                                    MaterialTheme.colorScheme.primary
+                                                else
+                                                    MaterialTheme.colorScheme.error,
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                            Text(
+                                                text = statusText,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = if (uiState.connectedUsbDacName != null)
+                                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                                else
+                                                    MaterialTheme.colorScheme.onErrorContainer
+                                            )
+                                        }
+                                    }
+                                }
+                            }
                         }
                         SettingsCategory.BEHAVIOR -> {
                             SettingsSubsection(

@@ -91,6 +91,8 @@ import java.io.ByteArrayOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
 
+import com.theveloper.pixelplay.data.service.usbaudio.UsbAudioManager
+import kotlinx.coroutines.flow.combine
 import javax.inject.Inject
 
 // Acciones personalizadas para compatibilidad con el widget existente
@@ -122,6 +124,8 @@ class MusicService : MediaLibraryService() {
     lateinit var wearStatePublisher: WearStatePublisher
     @Inject
     lateinit var replayGainManager: com.theveloper.pixelplay.data.media.ReplayGainManager
+    @Inject
+    lateinit var usbAudioManager: UsbAudioManager
 
     private var replayGainEnabled = false
     private var replayGainUseAlbumGain = false
@@ -130,6 +134,10 @@ class MusicService : MediaLibraryService() {
     private var userSelectedVolume = 1f
     private var expectedReplayGainVolume: Float? = null
     private var pendingReplayGainVolume: Float? = null
+
+    // USB DAC Mode state
+    private var usbDacModeEnabled = false
+    private var usbDacMonitorJob: Job? = null
 
     private var favoriteSongIds = emptySet<String>()
     private var mediaSession: MediaLibraryService.MediaLibrarySession? = null
@@ -323,6 +331,12 @@ class MusicService : MediaLibraryService() {
                 applyReplayGain(mediaSession?.player?.currentMediaItem)
             }
         }
+
+        // USB DAC Mode — combined monitor:
+        // · When enabled + DAC present → apply preferred routing to DAC
+        // · When DAC is removed while mode is enabled → pause + disable mode
+        // · DAC attachment alone never auto-enables the mode (user must do it manually)
+        startUsbDacMonitor()
 
         // Initialize shuffle state from preferences
         serviceScope.launch {
@@ -2515,5 +2529,75 @@ class MusicService : MediaLibraryService() {
         }
         return future
     }
+
+    // ===== USB DAC Mode =====
+
+    /**
+     * Monitors USB DAC connection state and the user's DAC Mode preference together.
+     *
+     * Rules:
+     * 1. User enables toggle + DAC is connected -> apply preferred routing to USB DAC.
+     * 2. DAC disconnects while mode is enabled -> pause playback and disable mode in prefs.
+     * 3. DAC is connected while mode is OFF -> do nothing (no auto-enable).
+     * 4. User disables toggle -> remove routing preference (fall back to default routing).
+     */
+    private fun startUsbDacMonitor() {
+        usbDacMonitorJob?.cancel()
+        usbDacMonitorJob = serviceScope.launch {
+            var previousDac: AudioDeviceInfo? = null
+            var previousModeEnabled = false
+
+            combine(
+                userPreferencesRepository.usbDacModeEnabledFlow,
+                usbAudioManager.connectedUsbDac
+            ) { modeEnabled, connectedDac ->
+                Pair(modeEnabled, connectedDac)
+            }.collect { (modeEnabled, connectedDac) ->
+
+                val dacJustDisconnected = previousDac != null && connectedDac == null
+                val dacJustConnected  = previousDac == null && connectedDac != null
+
+                Timber.tag(TAG).d(
+                    "UsbDac monitor: modeEnabled=$modeEnabled dac=${connectedDac?.productName} " +
+                    "dacJustDisconnected=$dacJustDisconnected dacJustConnected=$dacJustConnected"
+                )
+
+                when {
+                    // DAC removed while mode was active -> pause + disable mode
+                    dacJustDisconnected && previousModeEnabled -> {
+                        Timber.tag(TAG).i("USB DAC disconnected while mode was active - pausing and disabling mode")
+                        val player = mediaSession?.player
+                        player?.pause()
+                        engine.setUsbPreferredDevice(null)
+                        userPreferencesRepository.setUsbDacModeEnabled(false)
+                    }
+
+                    // Mode enabled and DAC present -> apply routing (DAC takes priority over BT)
+                    modeEnabled && connectedDac != null -> {
+                        Timber.tag(TAG).i(
+                            "USB DAC mode active - routing audio to ${connectedDac.productName}"
+                        )
+                        engine.setUsbPreferredDevice(connectedDac)
+                    }
+
+                    // Mode disabled -> remove routing preference
+                    !modeEnabled -> {
+                        engine.setUsbPreferredDevice(null)
+                    }
+
+                    // DAC just connected while mode is OFF -> do nothing
+                    dacJustConnected && !modeEnabled -> {
+                        Timber.tag(TAG).d("USB DAC connected but DAC mode is OFF - not auto-enabling")
+                    }
+                }
+
+                previousDac = connectedDac
+                previousModeEnabled = modeEnabled
+                usbDacModeEnabled = modeEnabled
+            }
+        }
+    }
+
+    // ===== End USB DAC Mode =====
 
 }
